@@ -4,7 +4,7 @@
 \alias{random_granges}
 \title{generate random GRanges}
 \usage{
-random_granges(n, txdb, width = 1)
+random_granges(n, txdb, width = 1, chroms = NULL)
 }
 \arguments{
 \item{n}{number of regions to create}
@@ -14,7 +14,8 @@ random_granges(n, txdb, width = 1)
 \item{width}{sizes of the regions, vector of integers from which is sampled}
 }
 \description{
-create random granges objects based on supplied chromosome lenghts and desired region widths
+create random granges objects based on supplied chromosome lenghts and desired region widths.
+For random granges with matched number and width of regions use ChIPseeker::shuffle().
 }
 \examples{
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)

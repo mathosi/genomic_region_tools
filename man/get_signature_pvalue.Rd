@@ -27,4 +27,15 @@ get_signature_pvalue(
 Given a peak signature, (binary) scATAC peakmatrix and a cell-to-cluster annotation, calculate an enrichment or
 depletion p-value for each cluster using bias-matched background peak sets
 }
+\examples{
+#bad example since there are no real clusters in this dataset, but the function still works
+signac_atac = Signac::atac_small
+peakmat = BinarizeCounts(GetAssayData(signac_atac))
+library(BSgenome.Hsapiens.UCSC.hg38)
+sig_gr = Signac::StringToGRanges(rownames(FindMarkers(signac_atac, assay = 'peaks', ident.1 = '0')))
+res = get_signature_pvalue(pmat = peakmat,
+                     group_vector = signac_atac$seurat_clusters, 
+                     signature_peaks_gr = sig_gr,
+                     genome = BSgenome.Hsapiens.UCSC.hg38)
+}
 \keyword{ggplot,plot_grobs,plot_grid}

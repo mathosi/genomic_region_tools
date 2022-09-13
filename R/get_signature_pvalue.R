@@ -12,15 +12,27 @@
 #' @keywords ggplot,plot_grobs,plot_grid
 #' @export
 #' @examples
-
+#' #bad example since there are no real clusters in this dataset, but the function still works
+#' signac_atac = Signac::atac_small
+#' peakmat = BinarizeCounts(GetAssayData(signac_atac))
+#' library(BSgenome.Hsapiens.UCSC.hg38)
+#' sig_gr = Signac::StringToGRanges(rownames(FindMarkers(signac_atac, assay = 'peaks', ident.1 = '0')))
+#' res = get_signature_pvalue(pmat = peakmat,
+#'                      group_vector = signac_atac$seurat_clusters, 
+#'                      signature_peaks_gr = sig_gr,
+#'                      genome = BSgenome.Hsapiens.UCSC.hg38)
 
 get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome, n_background_sets = 300){
   stopifnot(identical(ncol(pmat), length(group_vector)))
+  library(SummarizedExperiment)
+  library(chromVAR)
+  library(jj)
   se = SummarizedExperiment(assays = SimpleList(counts = pmat), 
                             rowRanges = StringToGRanges(rownames(pmat)),
                             colData = DataFrame(group = as.character(group_vector)))
   #library(BSgenome.Mmusculus.UCSC.mm10)
   se <- addGCBias(se, genome = genome)
+  se = se[!is.na(rowData(se)$bias), ]
   #draw background peaks from the same peakset for each peak
   message('Getting ', n_background_sets, ' sets of background peaks')
   bgpeaks <- getBackgroundPeaks(se,
