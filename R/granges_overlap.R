@@ -130,7 +130,9 @@ a_regions_that_have_minOverlap_with_b_regions <- function(
   dbRegionsOverlap <- GenomicRanges::findOverlaps(a_gr, b_gr, type='any', select="all", ignore.strand=TRUE, ...)
   if(length(dbRegionsOverlap)==0){
     if(verbose) warning('No overlaps found.')
-    return()
+    selectedMapped <- as.data.frame(matrix(,nrow = 0, ncol=3))
+    colnames(selectedMapped) = c('selectedRegions', 'selectedCoordinates', 'percentOverlapCoordinates')
+    return(selectedMapped)
   }
 
   overlaps <- pintersect(a_gr[queryHits(dbRegionsOverlap)], b_gr[subjectHits(dbRegionsOverlap)])
@@ -138,7 +140,9 @@ a_regions_that_have_minOverlap_with_b_regions <- function(
   dbRegionsOverlap <- dbRegionsOverlap[percentOverlapCoordinates >= minOverlap]
   if(length(dbRegionsOverlap)==0){
     if(verbose) warning(sprintf('No overlaps with >= %f %% overlap found.', minOverlap*100))
-    return()
+    selectedMapped <- as.data.frame(matrix(,nrow = 0, ncol=3))
+    colnames(selectedMapped) = c('selectedRegions', 'selectedCoordinates', 'percentOverlapCoordinates')
+    return(selectedMapped)
   }
   percentOverlapCoordinates <- percentOverlapCoordinates[which(percentOverlapCoordinates >= minOverlap)]
   
