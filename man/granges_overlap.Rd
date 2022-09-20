@@ -18,7 +18,7 @@ granges_overlap(
 
 \item{b_gr}{Granges object to compare with a_gr}
 
-\item{minOverlap}{minimum required overlap of the region width in a_gr, value between 0-1 (0=minimum 1bp overlap)}
+\item{minOverlap}{minimum required overlap of the region width in a_gr, value between 0-1 indicating the fraction that should overlap (0=minimum 1bp overlap is sufficient, 0.5 = at least 50\% of the width should overlap, 1=complete region must overlap)}
 
 \item{olap_direction}{Direction for which minOverlap is applied. Should regions in a_gr have minOverlap with regions in b_gr (choose 'a'), vice versa ('b'), in both directions ('both') or any direction is fine ('any')}
 

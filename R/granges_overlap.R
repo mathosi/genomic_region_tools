@@ -6,7 +6,7 @@
 #' @name granges_overlap
 #' @param a_gr Granges object
 #' @param b_gr Granges object to compare with a_gr
-#' @param minOverlap minimum required overlap of the region width in a_gr, value between 0-1 (0=minimum 1bp overlap)
+#' @param minOverlap minimum required overlap of the region width in a_gr, value between 0-1 indicating the fraction that should overlap (0=minimum 1bp overlap is sufficient, 0.5 = at least 50% of the width should overlap, 1=complete region must overlap)
 #' @param olap_direction Direction for which minOverlap is applied. Should regions in a_gr have minOverlap with regions in b_gr (choose 'a'), vice versa ('b'), in both directions ('both') or any direction is fine ('any')
 #' @param return_type Should a data.frame with pairs of overlapping regions in a_gr and b_gr ('pairs'), a logical vector indicating regions in a_gr with minOverlap in b_gr ('logical'), a vector of the region strings from a_gr with minOverlap with b_gr ('strings') be returned, or a message summarizing the percentage overlap be returned
 #' @returns Depending on `return_type` returns a data.frame, logical or character vector, or just a message
@@ -86,13 +86,13 @@ granges_overlap = function(a_gr, b_gr, minOverlap = 0, olap_direction = 'a',
   pair_df = pair_df %>% dplyr::select(a_index, b_index, a_name, b_name, pct_a_olap_b, pct_b_olap_a)
   
   if(olap_direction == 'a'){
-    pair_df = pair_df[pair_df$pct_a_olap_b > minOverlap, ]
+    pair_df = pair_df[pair_df$pct_a_olap_b >= minOverlap, ]
   }else if(olap_direction == 'b'){
-    pair_df = pair_df[pair_df$pct_b_olap_a > minOverlap, ]
+    pair_df = pair_df[pair_df$pct_b_olap_a >= minOverlap, ]
   }else if(olap_direction == 'any'){
-    pair_df = pair_df[pair_df$pct_a_olap_b > minOverlap | pair_df$pct_b_olap_a > minOverlap, ]
+    pair_df = pair_df[pair_df$pct_a_olap_b >= minOverlap | pair_df$pct_b_olap_a >= minOverlap, ]
   }else if(olap_direction == 'both'){
-    pair_df = pair_df[pair_df$pct_a_olap_b > minOverlap & pair_df$pct_b_olap_a > minOverlap, ]
+    pair_df = pair_df[pair_df$pct_a_olap_b >= minOverlap & pair_df$pct_b_olap_a >= minOverlap, ]
   }
   
   if(return_type == 'pairs'){
