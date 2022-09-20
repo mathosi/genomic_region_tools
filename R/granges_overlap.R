@@ -53,29 +53,37 @@
 #'               minOverlap = 0.2,
 #'               olap_direction = 'a')
 
-
 granges_overlap = function(a_gr, b_gr, minOverlap = 0, olap_direction = 'a',
                            return_type = 'pairs', verbose = TRUE){
   
+  #returns the regions in a_gr (column selectedRegions) that have at least minOverlap with the regions in b_gr (shown in the column selected coordinates)
+  #not vice versa in contrast to getOverlapRegionsFromCoordinates
   stopifnot(minOverlap >=0 & minOverlap <=1)
   olap_direction = match.arg(arg = olap_direction, choices = c('a','b','both','any')) 
-  return_type = match.arg(arg = return_type, choices = c('pairs','logical','strings', 'message')) 
+  return_type = match.arg(arg = return_type, choices = c('pairs','logical','strings', 'message'))
   if(is.null(names(a_gr))){
-    if(verbose) warning("a_gr must have names set. Setting names(a_gr) <- paste(seqnames(a_gr), ranges(a_gr), sep='-')")
+    #if(verbose) warning("a_gr must have names set. Setting names(a_gr) <- paste(seqnames(a_gr), ranges(a_gr), sep='-')")
     names(a_gr) <- paste(seqnames(a_gr), ranges(a_gr), sep='-')
-  } 
+  }
   if(is.null(names(b_gr))){
-    if(verbose) warning("b_gr must have names set. Setting names(b_gr) <- paste(seqnames(b_gr), ranges(b_gr), sep='-')")
+    #if(verbose) warning("b_gr must have names set. Setting names(b_gr) <- paste(seqnames(b_gr), ranges(b_gr), sep='-')")
     names(b_gr) <- paste(seqnames(b_gr), ranges(b_gr), sep='-')
-  } 
+  }
+  a_gr$name = names(a_gr)
+  b_gr$name = names(b_gr)
+  names(a_gr) = seq_along(a_gr)
+  names(b_gr) = seq_along(b_gr)
   
   a_grolap = a_regions_that_have_minOverlap_with_b_regions(a_gr, b_gr, minOverlap = 0, verbose = F)
-  colnames(a_grolap) = c('a_gr', 'b_gr', 'pct_a_olap_b')
+  colnames(a_grolap) = c('a_index', 'b_index', 'pct_a_olap_b')
   
   b_grolap = a_regions_that_have_minOverlap_with_b_regions(b_gr, a_gr, minOverlap = 0, verbose = F)
-  colnames(b_grolap) = c('b_gr', 'a_gr', 'pct_b_olap_a')
+  colnames(b_grolap) = c('b_index', 'a_index', 'pct_b_olap_a')
   
   pair_df = suppressMessages(dplyr::full_join(a_grolap, b_grolap))
+  pair_df$a_name = a_gr$name[as.integer(pair_df$a_index)]
+  pair_df$b_name = b_gr$name[as.integer(pair_df$b_index)]
+  pair_df = pair_df %>% dplyr::select(a_index, b_index, a_name, b_name, pct_a_olap_b, pct_b_olap_a)
   
   if(olap_direction == 'a'){
     pair_df = pair_df[pair_df$pct_a_olap_b > minOverlap, ]
@@ -90,16 +98,15 @@ granges_overlap = function(a_gr, b_gr, minOverlap = 0, olap_direction = 'a',
   if(return_type == 'pairs'){
     return(pair_df)
   }else if(return_type == 'strings'){
-    region_matches = unique(pair_df[, 'a_gr'])
+    region_matches = unique(pair_df[, 'a_name'])
     return(region_matches) 
   }else if(return_type == 'logical'){
-    region_matches = unique(pair_df[, 'a_gr'])
-    return(names(a_gr) %in% region_matches)
+    return(names(a_gr) %in% pair_df$a_index)
   }else if(return_type == 'message'){
     la_gr = length(a_gr) 
     lb_gr = length(b_gr) 
-    lolap1 = length(unique(pair_df$a_gr)) 
-    lolap2 = length(unique(pair_df$b_gr))
+    lolap1 = length(unique(pair_df$a_index)) 
+    lolap2 = length(unique(pair_df$b_index))
     lolap1pct = lolap1 / la_gr *100 #fraction of a_gr regions overlapping region in b_gr
     lolap2pct = lolap2 / lb_gr *100 #fraction of b_gr regions overlapping region in a_gr
     message(sprintf('Minimum overlap of %f%% in direction %s\nFraction of a_gr regions: %i/%i = %.3f%%\nFraction of b_gr regions: %i/%i = %.3f%%',
@@ -108,8 +115,6 @@ granges_overlap = function(a_gr, b_gr, minOverlap = 0, olap_direction = 'a',
 }
 
 
-#returns the regions in a_gr (column selectedRegions) that have at least minOverlap with the regions in b_gr (shown in the column selected coordinates)
-#not vice versa in contrast to getOverlapRegionsFromCoordinates
 a_regions_that_have_minOverlap_with_b_regions <- function(
     a_gr,
     b_gr,
@@ -134,7 +139,7 @@ a_regions_that_have_minOverlap_with_b_regions <- function(
     colnames(selectedMapped) = c('selectedRegions', 'selectedCoordinates', 'percentOverlapCoordinates')
     return(selectedMapped)
   }
-
+  
   overlaps <- pintersect(a_gr[queryHits(dbRegionsOverlap)], b_gr[subjectHits(dbRegionsOverlap)])
   percentOverlapCoordinates <- width(overlaps) / width(a_gr[queryHits(dbRegionsOverlap)])
   dbRegionsOverlap <- dbRegionsOverlap[percentOverlapCoordinates >= minOverlap]

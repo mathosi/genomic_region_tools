@@ -4,12 +4,12 @@
 \alias{random_granges}
 \title{generate random GRanges}
 \usage{
-random_granges(n, txdb, width = 1, chroms = NULL)
+random_granges(n, chr_annot, width = 1, chroms = NULL)
 }
 \arguments{
 \item{n}{number of regions to create}
 
-\item{txdb}{txdb object containing the sizes of chromosomes}
+\item{chr_annot}{txdb object containing the sizes of chromosomes. Alternatively, named numeric vector of chromosome lengths}
 
 \item{width}{sizes of the regions, vector of integers from which is sampled}
 }
@@ -20,5 +20,7 @@ For random granges with matched number and width of regions use ChIPseeker::shuf
 \examples{
 library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 txdb = TxDb.Hsapiens.UCSC.hg19.knownGene
-random_granges(n = 30, txdb = txdb, width = pmax(1, as.integer(rnorm(30, mean = 50, sd = 30))))
+random_granges(n = 30, chr_annot = txdb, width = pmax(1, as.integer(rnorm(30, mean = 50, sd = 30))))
+#get 30 width-1 regions from chr1-1-15000
+random_granges(n = 30, chr_annot = structure(15000, names='chr1'))
 }

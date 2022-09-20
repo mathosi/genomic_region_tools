@@ -40,7 +40,7 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
                                 niterations = n_background_sets, 
                                 w = 0.1, bs = 50)
   message('Calculating peak matrix overlap with signature')
-  signature_olap = a_regions_that_have_minOverlap_with_b_regions(rowRanges(se), signature_peaks_gr, return_logical = T)
+  signature_olap = granges_overlap(rowRanges(se), signature_peaks_gr, return_type = 'logical')
   message(sprintf('%i/%i peaks are overlapping with the signature.',sum(signature_olap), nrow(pmat)))
   bgpeaks = bgpeaks[signature_olap, ]
   
@@ -48,8 +48,11 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
   mean_cluster_acc = jj_summarize_sparse_mat(pmat[signature_olap, ], 
                                              summarize_by_vec = se$group,
                                              method = 'mean')
-  mean_cluster_acc = scale(t(mean_cluster_acc))
-  mean_cluster_acc = rowMeans(mean_cluster_acc)
+  #returns matrix with features in rows and groups in columns
+  #mean_cluster_acc = scale(t(mean_cluster_acc))
+  #mean_cluster_acc = apply(mean_cluster_acc, 1, rank)
+  #mean_cluster_acc = rowMeans(mean_cluster_acc) #returns groups in rows and features in columns
+  mean_cluster_acc = colMeans(mean_cluster_acc)
   print(sort(mean_cluster_acc, decreasing=T))
   
   message('Calculating background peak set scores per group')
@@ -65,13 +68,14 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
     mean_bg_cluster_acc = jj_summarize_sparse_mat(pmat[peaks_use, ], 
                                                   summarize_by_vec = se$group,
                                                   method = 'mean')
-    mean_bg_cluster_acc = scale(t(mean_bg_cluster_acc))
-    bg_mat[i, ] = rowMeans(mean_bg_cluster_acc)
+    #mean_bg_cluster_acc = scale(t(mean_bg_cluster_acc))
+    #mean_bg_cluster_acc = apply(mean_bg_cluster_acc, 1, rank)
+    bg_mat[i, ] = colMeans(mean_bg_cluster_acc) #rowMeans(mean_bg_cluster_acc)
   }
-  
-  avfc = sapply(seq_along(unique(group_vector)), function(x) mean(mean_cluster_acc[x] / bg_mat[, x], na.rm = T))
-  names(avfc) = names(mean_cluster_acc)
-  avfc = sort(avfc, decreasing = T)
+  stopifnot(identical(colnames(bg_mat), names(mean_cluster_acc)))
+  enr_score = sapply(1:ncol(bg_mat), function(x) mean(mean_cluster_acc[x] / bg_mat[, x], na.rm = T))
+  names(enr_score) = names(mean_cluster_acc)
+  enr_score = sort(enr_score, decreasing = T)
   
   message('Computing p values')
   #enrichment
@@ -87,12 +91,18 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
   padj_enriched = sort(padjusted[1:length(pvals_bigger)])
   padj_depleted = sort(padjusted[(length(pvals_bigger)+1):length(padjusted)])
   
-  result_list = list(
-    #p_enriched = pvals_bigger,
-    #p_depleted = pvals_smaller,
-    padj_enriched = padj_enriched,
-    padj_depleted = padj_depleted,
-    avfc = avfc
-  )
-  return(result_list)
+  # result_list = list(
+  #   #p_enriched = pvals_bigger,
+  #   #p_depleted = pvals_smaller,
+  #   padj_enriched = padj_enriched,
+  #   padj_depleted = padj_depleted,
+  #   rank_score = avfc #rank of signature / rank of background
+  # )
+  
+  pval_df = data.frame(group = gtools::mixedsort(names(padj_enriched)))
+  pval_df$padj_enriched = padj_enriched[match(pval_df$group, names(padj_enriched))]
+  pval_df$padj_depleted = padj_depleted[match(pval_df$group, names(padj_depleted))]
+  pval_df$enr_score = enr_score[match(pval_df$group, names(enr_score))]
+  
+  return(pval_df)
 }

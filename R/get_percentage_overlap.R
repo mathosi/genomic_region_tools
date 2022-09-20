@@ -16,7 +16,13 @@
 #' @param workers number of workers to use
 #' @export
 #' @examples
-
+#' 
+#' 
+# sig_df = get_percentage_overlap(peak_matrix = BinarizeCounts(peak_matrix), 
+#                                 reduced_dim_df = Embeddings(SObj, 'pca'),
+#                                 signature_gr = peaks_gr, 
+#                                 nFrags_vec = SObj$nCount_RNA, 
+#                                 count_thres = 50000)
 
 
 get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFrags_vec, 
@@ -34,10 +40,10 @@ get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFr
   stopifnot(class(coordinates)=='GRanges' & class(signature_gr)=='GRanges')
   #return peaks from seurat that overlap with signature peaks
   message('Determining signature - peak matrix overlap.')
-  regionsSignature <- a_regions_that_have_minOverlap_with_b_regions(coordinates,
-                                                                    signature_gr, 
-                                                                    minOverlap=min_overlap,
-                                                                    return_a_regions_only = T)
+  regionsSignature <- granges_overlap(coordinates,
+                                      signature_gr, 
+                                      minOverlap=min_overlap,
+                                      return_type = 'strings')
   if(length(regionsSignature) == 0){
     stop('No overlap between peaks and signature found.')
   }
@@ -107,7 +113,7 @@ get_signature_overlap_archr = function(proj, signature_gr, reduction='UMAP', cou
   feat_avail = ArchR::getPeakSet(proj)#[sample_use2]
   rownames(pmat) = paste(seqnames(feat_avail), ranges(feat_avail), sep='-')
   
-  sig_df = get_signature_overlap(peak_matrix = pmat, reduced_dim_df = dr_df, signature_gr = signature_gr,
+  sig_df = get_percentage_overlap(peak_matrix = pmat, reduced_dim_df = dr_df, signature_gr = signature_gr,
                                  nFrags_vec = proj$nFrags, count_thres = count_thres, k = k, min_overlap = min_overlap)
   return(sig_df)
 }
@@ -118,9 +124,9 @@ get_signature_overlap_seurat = function(seurat_obj, signature_gr, nFrags_vec,
                                         assay ='scATAC_raw', slot='counts', reduction='umap',
                                         count_thres = 3e5, k=100, min_overlap=0.5){
   #for seurat
-  dr_df = get_reduction_coords(seurat_atac, reduction, embedding_only = T)
+  dr_df = Embeddings(seurat_obj, reduction)
   pmat = GetAssayData(seurat_obj, assay = assay, slot=slot)
-  sig_df = get_signature_overlap(peak_matrix = pmat, 
+  sig_df = get_percentage_overlap(peak_matrix = pmat, 
                                  reduced_dim_df = dr_df, 
                                  signature_gr = signature_gr,
                                  nFrags_vec = nFrags_vec, count_thres = count_thres, k = k, min_overlap = min_overlap)

@@ -23,14 +23,14 @@
 
 convert_granges = function(obj, ...){
   library(GenomicRanges)
-  if(class(obj) == 'character'){
+  if(any(class(obj) == 'character')){
     obj = gsub(':', '-', obj)
     res = do.call('rbind', strsplit(obj, '-'))
     res = data.frame(seqnames = res[, 1], start = as.integer(res[, 2]), end = as.integer(res[, 3]))
     res = makeGRangesFromDataFrame(res, ...)
-  }else if(class(obj) == 'GRanges'){
+  }else if(any(class(obj) == 'GRanges')){
     res = paste(seqnames(obj), ranges(obj), sep = '-')
-  }else if(class(obj) %in% c('data.frame', 'DataFrame')){
+  }else if(any(class(obj) %in% c('data.frame', 'DataFrame'))){
     res = makeGRangesFromDataFrame(obj, ...)
   }else{
     stop('obj should be one of character vector, data.frame or Granges')
