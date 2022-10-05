@@ -29,7 +29,7 @@ get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFr
                                  count_thres = 3e5, k=100, min_overlap=0.5, workers=1){
   library(BiocParallel)
   library(GenomicRanges)
-  multicoreParam <- MulticoreParam(workers = workers)
+  multicoreParam <- MulticoreParam(workers = workers, progressbar = T)
   stopifnot(max(peak_matrix) == 1)
   stopifnot(identical(colnames(peak_matrix), rownames(reduced_dim_df)))
   
@@ -78,7 +78,7 @@ get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFr
   # }) 
   
   observed_peaks = unlist(bplapply(1:ncol(pmat_use), function(x){
-    if(x %% 1000 == 0) message(sprintf('%i/%i cells calculated.', x, ncol(pmat_use)))
+    #if(x %% 1000 == 0) message(sprintf('%i/%i cells calculated.', x, ncol(pmat_use)))
     olap = length(unique(vals_vec[ids_vec %in% ids_use_list[[x]]]))
     return(olap)
   }, BPPARAM = multicoreParam))

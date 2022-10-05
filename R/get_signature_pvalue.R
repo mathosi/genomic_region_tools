@@ -53,7 +53,7 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
   #mean_cluster_acc = apply(mean_cluster_acc, 1, rank)
   #mean_cluster_acc = rowMeans(mean_cluster_acc) #returns groups in rows and features in columns
   mean_cluster_acc = colMeans(mean_cluster_acc)
-  print(sort(mean_cluster_acc, decreasing=T))
+  #print(sort(mean_cluster_acc, decreasing=T))
   
   message('Calculating background peak set scores per group')
   bg_mat = jj_initialize_df(ncol = length(unique(se$group)), 
@@ -62,8 +62,14 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
                             col.names = names(mean_cluster_acc),
                             return_matrix = T)
   
+  pb <- utils::txtProgressBar(min = 0,   
+                       max = n_background_sets,
+                       style = 3,    
+                       char = "=")   
+  
   for(i in 1:n_background_sets){
-    if(i %% 25 == 0) message(i,'/',n_background_sets)
+    #if(i %% 25 == 0) message(i,'/',n_background_sets)
+    utils::setTxtProgressBar(pb, i)
     peaks_use = bgpeaks[, i]
     mean_bg_cluster_acc = jj_summarize_sparse_mat(pmat[peaks_use, ], 
                                                   summarize_by_vec = se$group,
@@ -72,6 +78,7 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
     #mean_bg_cluster_acc = apply(mean_bg_cluster_acc, 1, rank)
     bg_mat[i, ] = colMeans(mean_bg_cluster_acc) #rowMeans(mean_bg_cluster_acc)
   }
+  close(pb)
   stopifnot(identical(colnames(bg_mat), names(mean_cluster_acc)))
   enr_score = sapply(1:ncol(bg_mat), function(x) mean(mean_cluster_acc[x] / bg_mat[, x], na.rm = T))
   names(enr_score) = names(mean_cluster_acc)
