@@ -9,6 +9,7 @@
 #' @param signature_peaks_gr GRanges object of the peak signature
 #' @param genome genome for selection of background sequences, e.g. BSgenome.Mmusculus.UCSC.mm10
 #' @param n_background_sets number of background sets to compare against, higher values give more precise estimates
+#' @param verbose print progress messages
 #' @keywords ggplot,plot_grobs,plot_grid
 #' @export
 #' @examples
@@ -22,7 +23,7 @@
 #'                      signature_peaks_gr = sig_gr,
 #'                      genome = BSgenome.Hsapiens.UCSC.hg38)
 
-get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome, n_background_sets = 300){
+get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome, n_background_sets = 300, verbose = FALSE){
   stopifnot(identical(ncol(pmat), length(group_vector)))
   library(SummarizedExperiment)
   library(chromVAR)
@@ -34,17 +35,17 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
   se <- addGCBias(se, genome = genome)
   se = se[!is.na(rowData(se)$bias), ]
   #draw background peaks from the same peakset for each peak
-  message('Getting ', n_background_sets, ' sets of background peaks')
+  if(verbose) message('Getting ', n_background_sets, ' sets of background peaks')
   bgpeaks <- getBackgroundPeaks(se,
                                 bias = rowData(se)$bias,
                                 niterations = n_background_sets, 
                                 w = 0.1, bs = 50)
-  message('Calculating peak matrix overlap with signature')
+  if(verbose) message('Calculating peak matrix overlap with signature')
   signature_olap = granges_overlap(rowRanges(se), signature_peaks_gr, return_type = 'logical')
   message(sprintf('%i/%i peaks are overlapping with the signature.',sum(signature_olap), nrow(pmat)))
   bgpeaks = bgpeaks[signature_olap, ]
   
-  message('Calculating signature peak set scores per group')
+  if(verbose) message('Calculating signature peak set scores per group')
   mean_cluster_acc = jj_summarize_sparse_mat(pmat[signature_olap, ], 
                                              summarize_by_vec = se$group,
                                              method = 'mean')
@@ -53,23 +54,25 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
   #mean_cluster_acc = apply(mean_cluster_acc, 1, rank)
   #mean_cluster_acc = rowMeans(mean_cluster_acc) #returns groups in rows and features in columns
   mean_cluster_acc = colMeans(mean_cluster_acc)
-  #print(sort(mean_cluster_acc, decreasing=T))
+  if(verbose) print(sort(mean_cluster_acc, decreasing=T))
   
-  message('Calculating background peak set scores per group')
+  if(verbose) message('Calculating background peak set scores per group')
   bg_mat = jj_initialize_df(ncol = length(unique(se$group)), 
                             nrow = n_background_sets, 
                             init = NA, 
                             col.names = names(mean_cluster_acc),
                             return_matrix = T)
   
-  pb <- utils::txtProgressBar(min = 0,   
-                       max = n_background_sets,
-                       style = 3,    
-                       char = "=")   
-  
+  if(verbose){
+    pb <- utils::txtProgressBar(min = 0,   
+                                max = n_background_sets,
+                                style = 3,    
+                                char = "=")  
+  }
+ 
   for(i in 1:n_background_sets){
     #if(i %% 25 == 0) message(i,'/',n_background_sets)
-    utils::setTxtProgressBar(pb, i)
+    if(verbose) utils::setTxtProgressBar(pb, i)
     peaks_use = bgpeaks[, i]
     mean_bg_cluster_acc = jj_summarize_sparse_mat(pmat[peaks_use, ], 
                                                   summarize_by_vec = se$group,
@@ -78,13 +81,13 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
     #mean_bg_cluster_acc = apply(mean_bg_cluster_acc, 1, rank)
     bg_mat[i, ] = colMeans(mean_bg_cluster_acc) #rowMeans(mean_bg_cluster_acc)
   }
-  close(pb)
+  if(verbose) close(pb)
   stopifnot(identical(colnames(bg_mat), names(mean_cluster_acc)))
   enr_score = sapply(1:ncol(bg_mat), function(x) mean(mean_cluster_acc[x] / bg_mat[, x], na.rm = T))
   names(enr_score) = names(mean_cluster_acc)
   enr_score = sort(enr_score, decreasing = T)
   
-  message('Computing p values')
+  if(verbose) message('Computing p values')
   #enrichment
   pvals_bigger = sapply(seq_along(unique(group_vector)), function(x) sum(bg_mat[, x] > mean_cluster_acc[x]) / n_background_sets)
   names(pvals_bigger) = names(mean_cluster_acc)

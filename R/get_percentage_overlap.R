@@ -14,6 +14,7 @@
 #' @param k number of nearest neighbours to search for each cell
 #' @param min_overlap minimum overlap of the peak regions with signature regions to count as overlapping feature
 #' @param workers number of workers to use
+#' @param verbose print progress messages
 #' @export
 #' @examples
 #' 
@@ -26,10 +27,11 @@
 
 
 get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFrags_vec, 
-                                 count_thres = 3e5, k=100, min_overlap=0.5, workers=1){
+                                 count_thres = 3e5, k=100, min_overlap=0.5, workers=1, verbose = FALSE){
   library(BiocParallel)
   library(GenomicRanges)
-  multicoreParam <- MulticoreParam(workers = workers, progressbar = T)
+
+  multicoreParam <- MulticoreParam(workers = workers, progressbar = verbose)
   stopifnot(max(peak_matrix) == 1)
   stopifnot(identical(colnames(peak_matrix), rownames(reduced_dim_df)))
   
@@ -39,7 +41,7 @@ get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFr
   
   stopifnot(class(coordinates)=='GRanges' & class(signature_gr)=='GRanges')
   #return peaks from seurat that overlap with signature peaks
-  message('Determining signature - peak matrix overlap.')
+  if(verbose) message('Determining signature - peak matrix overlap.')
   regionsSignature <- granges_overlap(coordinates,
                                       signature_gr, 
                                       minOverlap=min_overlap,
@@ -47,14 +49,14 @@ get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFr
   if(length(regionsSignature) == 0){
     stop('No overlap between peaks and signature found.')
   }
-  message(sprintf('\nSignature contains %i regions, %i regions in the peak matrix overlap with them.',
+  if(verbose) message(sprintf('\nSignature contains %i regions, %i regions in the peak matrix overlap with them.',
                   length(signature_gr), length(regionsSignature)))
   
-  message(sprintf('Finding %i nearest neighbours for each cell.', k))
+  if(verbose) message(sprintf('Finding %i nearest neighbours for each cell.', k))
   nn_map2 <- FNN::get.knnx(data=reduced_dim_df, query=reduced_dim_df, k = k)
   n_ID = t(nn_map2$nn.index)
   
-  message('Determining number of neighbours to aggregate for each cell.')
+  if(verbose) message('Determining number of neighbours to aggregate for each cell.')
   cum_sum_mat = apply(n_ID, 2, function(x) cumsum(nFrags_vec[x])) #each column is a cell, each row adds another neighbour cell to the counts
   n_ID_cumsum = apply(cum_sum_mat, 2, function(x) which(x > count_thres)[1]) #find the number of cells to aggregate to reach the count threshold
   ncount_after = sapply(1:ncol(cum_sum_mat), function(x) cum_sum_mat[n_ID_cumsum[x], x]) #fragment number after aggregation
@@ -68,7 +70,7 @@ get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFr
   #get subset of counts matrix with peaks overlapping signature peaks
   pmat_use <- peak_matrix[rownames(peak_matrix) %in% regionsSignature, ]
   
-  message('Counting number of signature peaks overlapped by each aggregated cell.')
+  if(verbose) message('Counting number of signature peaks overlapped by each aggregated cell.')
   vals_vec = pmat_use@i
   ids_vec = rep(1:ncol(pmat_use), times = Matrix::colSums(pmat_use))
   # observed_peaks = sapply(1:ncol(pmat_use), function(x){
