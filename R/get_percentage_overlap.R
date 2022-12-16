@@ -27,7 +27,8 @@
 
 
 get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFrags_vec, 
-                                 count_thres = 3e5, k=100, min_overlap=0.5, workers=1, verbose = FALSE){
+                                 count_thres = 3e5, k=100, min_overlap=0.5, workers=1, unify_peak_matrix = TRUE, 
+                                 verbose = FALSE){
   library(BiocParallel)
   library(GenomicRanges)
 
@@ -51,6 +52,23 @@ get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFr
   }
   if(verbose) message(sprintf('\nSignature contains %i regions, %i regions in the peak matrix overlap with them.',
                   length(signature_gr), length(regionsSignature)))
+  
+  ##
+  if(unify_peak_matrix){
+    if(verbose) message('Unifying peak matrix and signature regions')
+    dummy_mat = matrix(dimnames = list(names(signature_gr), c('A','B')), 
+                       nrow = length(signature_gr), ncol = 2, data = 0)
+    peak_matrix = unify_peak_matrices(list(peak_matrix, dummy_mat), type = 'union')[[1]]
+    peak_matrix[peak_matrix>1] = 1
+    coordinates = convert_granges(rownames(peak_matrix))
+    regionsSignature <- granges_overlap(coordinates,
+                                        signature_gr, 
+                                        minOverlap=min_overlap,
+                                        return_type = 'strings')
+    if(verbose) message(sprintf('\nSignature contains %i regions, %i regions in the unified peak matrix overlap with them.\nMaximum possible overlap: %.2f%%',
+                                length(signature_gr), length(regionsSignature), length(regionsSignature)/length(signature_gr)*100))
+  }
+  ##
   
   if(verbose) message(sprintf('Finding %i nearest neighbours for each cell.', k))
   nn_map2 <- FNN::get.knnx(data=reduced_dim_df, query=reduced_dim_df, k = k)
@@ -93,8 +111,10 @@ get_percentage_overlap = function(peak_matrix, reduced_dim_df, signature_gr, nFr
   # stopifnot(max(pmat_use2) == 1)
   
   #observed_peaks <- Matrix::colSums(pmat_use2)
-  signature_pct_overlap = observed_peaks / length(signature_gr) *100 #length(regionsSignature) * 100 #better to take full signature
+  signature_pct_overlap = observed_peaks / length(signature_gr) *100 #percent of full signature that is overlapped
+  dataset_max_pct_overlap = observed_peaks / length(regionsSignature) *100  #percent of overlapping peaks in the dataset that have >0 fragments
   sig_df = data.frame(signature_pct_overlap = signature_pct_overlap, 
+                      dataset_max_pct_overlap = dataset_max_pct_overlap,
                       signature_n_overlap = observed_peaks,
                       n_cells_aggregated = n_ID_cumsum,
                       nFrags_aggregated =  ncount_after)

@@ -116,3 +116,41 @@ get_signature_pvalue  = function(pmat, group_vector, signature_peaks_gr, genome,
   
   return(pval_df)
 }
+
+#' @rdname get_signature_pvalue
+#' @export
+plot_cluster_significance = function(reduction, pval_signature_df, group_column){
+  pval_to_metadata = function(pval_df, group_vector, thres=0.001){
+    pval_vec = rep('ns', length(group_vector))
+    sig_enrich = pval_df$padj_enriched[match(group_vector, pval_df$group)]
+    pval_vec[sig_enrich < thres] = 'signif. enriched' 
+    sig_dep = pval_df$padj_depleted[match(group_vector, pval_df$group)]
+    pval_vec[sig_dep < thres] = 'signif. depleted'
+    pval_vec
+  }
+  
+  reduction = as.data.frame(reduction)
+  pval_signature_df = as.data.frame(pval_signature_df)
+  stopifnot(group_column %in% colnames(reduction))
+  reduction$enr_score= pval_signature_df$enr_score[match(reduction[, group_column ], pval_signature_df$group)]
+  reduction[, group_column] = as.factor(reduction[, group_column])
+  reduction$sig_significance = pval_to_metadata(pval_signature_df, reduction[, group_column])
+  label_df = reduction[, c(group_column, 'sig_significance')] %>% 
+    .[!duplicated(.), ] %>% 
+    dplyr::filter(sig_significance != 'ns') 
+  label_df$sig_significance = from_to(label_df$sig_significance, 
+                                      c('signif. depleted' ='dep', 'signif. enriched' ='enr'))
+  cols_use =  jj_get_jj_colours(gtools::mixedsort(levels(reduction[, group_column])))
+  label_df$col = cols_use[match(label_df[, group_column], names(cols_use))]
+  
+  jj_plot_features(reduction=reduction, #cap_top = 'q999', cap_bottom = 'q001', 
+                   cont_or_disc = 'c',
+                   meta_features = c('enr_score'), return_gg_object = T)[[1]] + 
+    scale_colour_gradient2(low = 'darkblue', mid = 'grey80', high = 'red', midpoint = 1)
+  
+  gg = jj_plot_features(reduction = reduction, meta_features = group_column, return_gg_object = T)
+  jj::.LabelClusters(gg[[1]], id = group_column, clusters=label_df[, group_column], 
+                 labels = label_df$sig_significance, col_use = label_df$col,
+                 box=T)
+}
+
