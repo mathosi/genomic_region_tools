@@ -46,7 +46,7 @@ unify_peak_matrices = function(pmat_list, minOverlap = 0, type = c('first', 'uni
     pmat_list[[2]] = pmat_list[[2]][as.integer(olap_df$b_index),, drop=FALSE ]
     rownames(pmat_list[[1]]) = rownames(pmat_list[[2]]) = olap_df$new_name
   }else if(type == 'union'){
-    ugr = union(peaks_gr1, peaks_gr2)
+    ugr = GenomicRanges::union(peaks_gr1, peaks_gr2)
     olap_df1 = granges_overlap(peaks_gr1, ugr, minOverlap = minOverlap, olap_direction = 'a')
     olap_df2 = granges_overlap(peaks_gr2, ugr, minOverlap = minOverlap, olap_direction = 'a')
     if(!any(olap_df1$b_name %in% olap_df2$b_name)){
